@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Kawasan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-md mx-auto">
+        <header class="mb-6">
+            <h1 class="text-2xl font-bold text-blue-600">⚡ Dashboard Monitoring Kawasan</h1>
+            <p class="text-gray-500">KCP Mandiri Tanjung Duren</p>
+        </header>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
+                <p class="text-xs text-gray-500">✓ BAIK</p>
+                <p id="count-baik" class="text-xl font-bold">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500">
+                <p class="text-xs text-gray-500">✕ KENDALA</p>
+                <p id="count-kendala" class="text-xl font-bold">0</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <input type="text" id="searchInput" placeholder="Cari Merchant..." 
+                class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+
+        <div id="merchantList" class="space-y-3">
+            <p class="text-center text-gray-400 py-10">Memuat data...</p>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyWIBBZrFk9q13sH496Ihk2_tw4Awh87q8Ve4Iyd6qJfNY6-7kkrziTiJaIwAyTmzu/exec';
+        let edcData = [];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                edcData = await response.json();
+                renderList(edcData);
+                updateStats();
+            } catch (error) {
+                console.error("Gagal ambil data:", error);
+            }
+        }
+
+        function renderList(data) {
+            const listContainer = document.getElementById('merchantList');
+            listContainer.innerHTML = data.map(item => `
+                <div class="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center border border-gray-100">
+                    <div>
+                        <h3 class="font-bold text-gray-800">${item.Merchant}</h3>
+                        <p class="text-xs text-gray-500">Lantai ${item.Lantai} • PIC: ${item.PIC}</p>
+                        <span class="text-[10px] px-2 py-1 rounded-full ${item.Status === 'BAIK' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${item.Status}
+                        </span>
+                    </div>
+                    <button onclick="updateStatus('${item.ID}')" class="text-blue-500 text-sm font-semibold">Update</button>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            const baik = edcData.filter(d => d.Status === 'BAIK').length;
+            const kendala = edcData.length - baik;
+            document.getElementById('count-baik').innerText = baik;
+            document.getElementById('count-kendala').innerText = kendala;
+        }
+
+        // Jalankan saat load
+        fetchData();
+
+        // Search Logic
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const filtered = edcData.filter(d => 
+                d.Merchant.toLowerCase().includes(e.target.value.toLowerCase())
+            );
+            renderList(filtered);
+        });
+    </script>
+</body>
+</html>
