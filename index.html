@@ -1,87 +1,222 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Monitoring Kawasan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FU Monitor - Bank Mandiri</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .loader { border-top-color: #3498db; animation: spinner 1.5s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-md mx-auto">
-        <header class="mb-6">
-            <h1 class="text-2xl font-bold text-blue-600">⚡ Dashboard Monitoring Kawasan</h1>
-            <p class="text-gray-500">KCP Mandiri Tanjung Duren</p>
-        </header>
+<body class="bg-gray-50 min-h-screen">
 
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-                <p class="text-xs text-gray-500">✓ BAIK</p>
-                <p id="count-baik" class="text-xl font-bold">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500">
-                <p class="text-xs text-gray-500">✕ KENDALA</p>
-                <p id="count-kendala" class="text-xl font-bold">0</p>
-            </div>
+  <div class="max-w-md mx-auto min-h-screen flex flex-col">
+    <div class="bg-indigo-700 text-white p-6 rounded-b-[2rem] shadow-xl">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-yellow-400 italic">⚡ FU MONITOR</h1>
+          <p class="text-indigo-100 text-xs">Merchant Acquisition Tracking</p>
         </div>
-
-        <div class="mb-4">
-            <input type="text" id="searchInput" placeholder="Cari Merchant..." 
-                class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        <button onclick="fetchData()" class="bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
+          <i class="fas fa-sync-alt" id="refresh-icon"></i>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20">
+          <p class="text-[10px] uppercase font-bold text-indigo-200">✅ Sudah FU</p>
+          <p id="stat-sudah" class="text-2xl font-bold">0</p>
         </div>
-
-        <div id="merchantList" class="space-y-3">
-            <p class="text-center text-gray-400 py-10">Memuat data...</p>
+        <div class="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20">
+          <p class="text-[10px] uppercase font-bold text-indigo-200">⏳ Belum FU</p>
+          <p id="stat-belum" class="text-2xl font-bold">0</p>
         </div>
+      </div>
     </div>
 
-    <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyWIBBZrFk9q13sH496Ihk2_tw4Awh87q8Ve4Iyd6qJfNY6-7kkrziTiJaIwAyTmzu/exec';
-        let edcData = [];
+    <div class="p-4 flex-1">
+      <div class="sticky top-2 z-10 space-y-3 mb-6">
+        <div class="relative">
+          <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <input type="text" id="searchBox" placeholder="Cari Nama Merchant..." 
+            class="w-full pl-11 pr-4 py-3 rounded-2xl border-none shadow-md focus:ring-2 focus:ring-indigo-500 text-sm">
+        </div>
+        
+        <div class="flex gap-2">
+          <select id="picFilter" class="flex-1 p-3 rounded-xl border-none shadow-md text-xs font-semibold bg-white cursor-pointer">
+            <option value="Semua PIC">Semua PIC</option>
+          </select>
+          <select id="statusFilter" class="flex-1 p-3 rounded-xl border-none shadow-md text-xs font-semibold bg-white cursor-pointer">
+            <option value="Semua Status">Semua Status</option>
+            <option value="Sudah">Sudah</option>
+            <option value="Belum">Belum</option>
+          </select>
+        </div>
+      </div>
 
-        async function fetchData() {
-            try {
-                const response = await fetch(SCRIPT_URL);
-                edcData = await response.json();
-                renderList(edcData);
-                updateStats();
-            } catch (error) {
-                console.error("Gagal ambil data:", error);
-            }
-        }
+      <div id="loading" class="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10 mb-4"></div>
+        <p class="text-sm font-medium">Sinkronisasi Google Sheets...</p>
+      </div>
 
-        function renderList(data) {
-            const listContainer = document.getElementById('merchantList');
-            listContainer.innerHTML = data.map(item => `
-                <div class="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center border border-gray-100">
-                    <div>
-                        <h3 class="font-bold text-gray-800">${item.Merchant}</h3>
-                        <p class="text-xs text-gray-500">Lantai ${item.Lantai} • PIC: ${item.PIC}</p>
-                        <span class="text-[10px] px-2 py-1 rounded-full ${item.Status === 'BAIK' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                            ${item.Status}
-                        </span>
-                    </div>
-                    <button onclick="updateStatus('${item.ID}')" class="text-blue-500 text-sm font-semibold">Update</button>
-                </div>
-            `).join('');
-        }
+      <div id="merchantList" class="space-y-4"></div>
+    </div>
+  </div>
 
-        function updateStats() {
-            const baik = edcData.filter(d => d.Status === 'BAIK').length;
-            const kendala = edcData.length - baik;
-            document.getElementById('count-baik').innerText = baik;
-            document.getElementById('count-kendala').innerText = kendala;
-        }
+  <div id="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl">
+      <h3 class="text-lg font-bold text-gray-800 mb-2">Update Hasil FU</h3>
+      <p id="modal-merchant-name" class="text-xs text-gray-500 mb-4"></p>
+      <input type="hidden" id="modal-id">
+      <textarea id="modal-input" placeholder="Tulis hasil follow up di sini..." 
+        class="w-full p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 text-sm mb-4" rows="3"></textarea>
+      <div class="flex gap-2">
+        <button onclick="closeModal()" class="flex-1 py-3 text-sm font-bold text-gray-400 hover:text-gray-600 transition">Batal</button>
+        <button onclick="submitUpdate()" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200">Simpan</button>
+      </div>
+    </div>
+  </div>
 
-        // Jalankan saat load
-        fetchData();
+  <script>
+    /* --- KONFIGURASI --- */
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyWIBBZrFk9q13sH496Ihk2_tw4Awh87q8Ve4Iyd6qJfNY6-7kkrziTiJaIwAyTmzu/exec"; 
+    /* ------------------- */
 
-        // Search Logic
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const filtered = edcData.filter(d => 
-                d.Merchant.toLowerCase().includes(e.target.value.toLowerCase())
-            );
-            renderList(filtered);
+    let rawData = [];
+
+    // Ambil Data saat halaman dibuka
+    async function fetchData() {
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('merchantList').innerHTML = '';
+      document.getElementById('refresh-icon').classList.add('fa-spin');
+
+      try {
+        const response = await fetch(SCRIPT_URL);
+        rawData = await response.json();
+        
+        populatePIC(rawData);
+        renderList(rawData);
+      } catch (error) {
+        alert("Gagal mengambil data. Pastikan URL Web App benar dan sudah di-Deploy.");
+        console.error(error);
+      } finally {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('refresh-icon').classList.remove('fa-spin');
+      }
+    }
+
+    // Isi Dropdown PIC secara otomatis
+    function populatePIC(data) {
+      const picDropdown = document.getElementById('picFilter');
+      const currentPIC = picDropdown.value;
+      const uniquePICs = [...new Set(data.map(item => item.pic))].filter(Boolean);
+      
+      picDropdown.innerHTML = '<option value="Semua PIC">Semua PIC</option>';
+      uniquePICs.forEach(pic => {
+        const opt = document.createElement('option');
+        opt.value = pic;
+        opt.innerHTML = pic;
+        picDropdown.appendChild(opt);
+      });
+      picDropdown.value = currentPIC;
+    }
+
+    // Tampilkan List ke Layar
+    function renderList(data) {
+      const container = document.getElementById('merchantList');
+      const search = document.getElementById('searchBox').value.toLowerCase();
+      const picFilter = document.getElementById('picFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      const filtered = data.filter(item => {
+        const matchesSearch = item.nama_merchant.toLowerCase().includes(search);
+        const matchesPIC = picFilter === "Semua PIC" || item.pic === picFilter;
+        const matchesStatus = statusFilter === "Semua Status" || item.followup === statusFilter;
+        return matchesSearch && matchesPIC && matchesStatus;
+      });
+
+      // Update Stats
+      document.getElementById('stat-sudah').innerText = data.filter(d => d.followup === "Sudah").length;
+      document.getElementById('stat-belum').innerText = data.filter(d => d.followup === "Belum").length;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm italic">Tidak ada merchant ditemukan</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => `
+        <div class="bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-100 transition active:scale-95">
+          <div class="flex justify-between items-start mb-3">
+             <span class="text-[10px] font-bold text-gray-300 tracking-widest uppercase">${item.merchantid}</span>
+             <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-tighter ${item.followup === 'Sudah' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}">
+                ${item.followup.toUpperCase()}
+             </span>
+          </div>
+          <h3 class="font-bold text-gray-800 text-base leading-tight mb-2">${item.nama_merchant}</h3>
+          
+          <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-500 mb-4">
+            <div class="flex items-center gap-1"><i class="far fa-user opacity-50"></i> ${item.pic}</div>
+            <div class="flex items-center gap-1 text-right justify-end"><i class="far fa-calendar-alt opacity-50"></i> ${item.tanggal_fu_terakhir || '-'}</div>
+          </div>
+
+          <button onclick="openModal('${item.merchantid}', '${item.nama_merchant}')" 
+            class="w-full bg-gray-50 text-indigo-600 py-3 rounded-xl text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors duration-300">
+            UPDATE HASIL FOLLOW UP
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Modal Logic
+    function openModal(id, name) {
+      document.getElementById('modal-id').value = id;
+      document.getElementById('modal-merchant-name').innerText = name;
+      document.getElementById('modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal-input').value = '';
+      document.body.style.overflow = 'auto';
+    }
+
+    // Kirim Update ke Google Sheets
+    async function submitUpdate() {
+      const id = document.getElementById('modal-id').value;
+      const hasil = document.getElementById('modal-input').value;
+
+      if (!hasil) return alert("Hasil FU tidak boleh kosong!");
+
+      closeModal();
+      document.getElementById('loading').classList.remove('hidden');
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ merchantId: id, hasilFu: hasil }),
         });
-    </script>
+        
+        // Refresh data setelah berhasil
+        setTimeout(fetchData, 1000);
+      } catch (error) {
+        alert("Gagal mengirim update. Coba lagi.");
+        document.getElementById('loading').classList.add('hidden');
+      }
+    }
+
+    // Listeners
+    document.getElementById('searchBox').addEventListener('input', () => renderList(rawData));
+    document.getElementById('picFilter').addEventListener('change', () => renderList(rawData));
+    document.getElementById('statusFilter').addEventListener('change', () => renderList(rawData));
+
+    // Jalankan pertama kali
+    window.onload = fetchData;
+  </script>
 </body>
 </html>
